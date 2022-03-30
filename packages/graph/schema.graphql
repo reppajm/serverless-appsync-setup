@@ -1,0 +1,23 @@
+type Todo {
+  id: ID!
+  title: String
+}
+
+type Query {
+  """
+  list of all todos
+  """
+  todos: [Todo]! @aws_iam @aws_cognito_user_pools
+}
+
+type Mutation {
+  """
+  Create a todo
+  """
+  todoCreate(title: String!): Todo
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+}

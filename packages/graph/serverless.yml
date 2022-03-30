@@ -3,7 +3,7 @@ service: graphql-tac-todo
 provider:
   name: aws
   runtime: nodejs14.x
-  region: ap-southeast-1
+  region: ap-southeast-2
   lambdaHashingVersion: 20201221
   iam:
     role:
@@ -33,7 +33,13 @@ plugins:
   - serverless-offline
   - serverless-appsync-simulator
   - serverless-appsync-plugin
-  # - serverless-webpack
+  - serverless-webpack
+
+functions:
+  query-fn:
+    handler: functions/query.handler
+  mutation-fn:
+    handler: functions/mutation.handler
 
 custom:
   dynamodb:
@@ -49,37 +55,41 @@ custom:
       convertEmptyValues: true
       # Uncomment only if you already have a DynamoDB running locally
       noStart: true
+  appsync-simulator:
+    apiKey: 0123456789
+
   appSync:
-    name: ServerlessAppSyncImmersion
+    name: AppSyncTodoApp
     schema: schema.graphql
-    authenticationType: AMAZON_COGNITO_USER_POOLS
+    authenticationType: API_KEY
     userPoolConfig:
       defaultAction: ALLOW
       userPoolId: !Ref CognitoUserPool
+    additionalAuthenticationProviders:
+      - authenticationType: AWS_IAM
     mappingTemplatesLocation: mapping-templates
 
     mappingTemplates:
-      - dataSource: DynamoDBTodoTableDS
+      - dataSource: LambdaQueryDS
         type: Query
         field: todos
-      - dataSource: DynamoDBTodoTableDS
-        type: Query
-        field: todo
-      - dataSource: DynamoDBTodoTableDS
+        request: false
+        response: false
+      - dataSource: LambdaMutationDS
         type: Mutation
         field: todoCreate
-      - dataSource: DynamoDBTodoTableDS
-        type: Mutation
-        field: todoUpdate
-      - dataSource: DynamoDBTodoTableDS
-        type: Mutation
-        field: todoDelete
+        request: false
+        response: false
 
     dataSources:
-      - type: AMAZON_DYNAMODB
-        name: DynamoDBTodoTableDS
+      - type: AWS_LAMBDA
+        name: LambdaQueryDS
         config:
-          tableName: !Ref TodoTable
+          functionName: query-fn
+      - type: AWS_LAMBDA
+        name: LambdaMutationDS
+        config:
+          functionName: mutation-fn
 
 resources: # CloudFormation template syntax
   - ${file(./resources.yml)}
